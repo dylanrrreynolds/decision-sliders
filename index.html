@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Decision Sliders</title>
+  <style>
+    :root { color-scheme: dark; }
+    body{
+      margin:0; padding:24px;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      background:#0f0f10; color:#fff;
+    }
+    .wrap{ max-width:900px; margin:0 auto; }
+    .header{ display:flex; gap:12px; align-items:center; justify-content:space-between; margin-bottom:18px; }
+    .title{ font-size:18px; font-weight:700; opacity:.9; }
+    .btn{
+      border:1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.06);
+      color:#fff; padding:10px 12px; border-radius:10px;
+      font-size:13px; cursor:pointer;
+    }
+    .grid{ display:flex; flex-direction:column; gap:14px; }
+    .card{
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.04);
+      border-radius:14px;
+      padding:14px 14px 12px;
+    }
+    .row{
+      display:grid;
+      grid-template-columns: 1fr 2fr 1fr;
+      gap:12px;
+      align-items:center;
+    }
+    .label{
+      font-size:13px;
+      opacity:.85;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .label.right{ text-align:right; }
+    input[type="range"]{
+      width:100%;
+      accent-color: #ffffff;
+    }
+    .choice{
+      margin-top:10px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      font-size:12px;
+      opacity:.9;
+    }
+    .pill{
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      font-size:12px;
+    }
+    .meta{ opacity:.7; font-size:12px; }
+    textarea{
+      width:100%;
+      margin-top:14px;
+      height:140px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.03);
+      color:#fff;
+      padding:12px;
+      font-size:13px;
+      resize:vertical;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div class="title">Decision Sliders (auto-picks a side)</div>
+      <button class="btn" id="copyBtn">Copy summary</button>
+    </div>
+
+    <div class="grid" id="grid"></div>
+
+    <textarea id="summary" readonly></textarea>
+    <div class="meta">Snap rule: left if &lt; 50, right if &gt; 50. (50 defaults to left.)</div>
+  </div>
+
+<script>
+  const decisions = [
+    { id:"d1", left:"Done For You", right:"Done Yourself" },
+    { id:"d2", left:"High Ticket", right:"Low Ticket" },
+    { id:"d3", left:"Live", right:"Pre-Recorded" },
+    { id:"d4", left:"Launch", right:"Evergreen" },
+    { id:"d5", left:"1:1", right:"Group" },
+    { id:"d6", left:"Recurring", right:"One-Time" },
+    { id:"d7", left:"High Support", right:"Minimal Support" },
+  ];
+
+  const grid = document.getElementById("grid");
+  const summary = document.getElementById("summary");
+
+  function pickSide(v, left, right){
+    return (v > 50) ? right : left;
+  }
+
+  function render(){
+    grid.innerHTML = "";
+    decisions.forEach(d => {
+      const card = document.createElement("div");
+      card.className = "card";
+
+      card.innerHTML = `
+        <div class="row">
+          <div class="label">${d.left}</div>
+          <input type="range" min="0" max="100" value="50" step="1" data-id="${d.id}">
+          <div class="label right">${d.right}</div>
+        </div>
+        <div class="choice">
+          <div class="pill" id="${d.id}-pill"></div>
+          <div class="meta"><span id="${d.id}-val">50</span>/100</div>
+        </div>
+      `;
+
+      grid.appendChild(card);
+    });
+
+    grid.querySelectorAll('input[type="range"]').forEach(sl => {
+      const d = decisions.find(x => x.id === sl.dataset.id);
+
+      const update = () => {
+        const v = Number(sl.value);
+        document.getElementById(`${d.id}-val`).textContent = v;
+        document.getElementById(`${d.id}-pill`).textContent = pickSide(v, d.left, d.right);
+        buildSummary();
+      };
+
+      sl.addEventListener("input", update);
+
+      sl.addEventListener("change", () => {
+        const v = Number(sl.value);
+        sl.value = (v > 50) ? 100 : 0;
+        update();
+      });
+
+      update();
+    });
+
+    buildSummary();
+  }
+
+  function buildSummary(){
+    const lines = [];
+    grid.querySelectorAll('input[type="range"]').forEach(sl => {
+      const d = decisions.find(x => x.id === sl.dataset.id);
+      const v = Number(sl.value);
+      const picked = pickSide(v, d.left, d.right);
+      lines.push(`${d.left} / ${d.right}: ${picked}`);
+    });
+    summary.value = lines.join("\n");
+  }
+
+  document.getElementById("copyBtn").addEventListener("click", async () => {
+    try{
+      await navigator.clipboard.writeText(summary.value);
+      document.getElementById("copyBtn").textContent = "Copied";
+      setTimeout(()=> document.getElementById("copyBtn").textContent="Copy summary", 900);
+    }catch(e){
+      alert("Clipboard blocked. Copy manually.");
+    }
+  });
+
+  render();
+</script>
+</body>
+</html>
